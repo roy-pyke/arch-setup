@@ -1,0 +1,150 @@
+/* General */
+* {
+    font-family: "JetBrainsMono Nerd Font", "Symbols Nerd Font Mono", monospace;
+    font-size: 11px;
+    min-height: 0;
+}
+
+window#waybar {
+    background-color: rgba(20, 20, 20, 0);
+    color: #ffffff;
+}
+
+/* LEFT */
+.modules-left {
+    background-color: rgba(20, 20, 20, 0.45);
+    border-radius: 10px;
+    margin: 3px 0 3px 6px;
+}
+
+/* CENTER */
+.modules-center {
+    background-color: rgba(20, 20, 20, 0.45);
+    border-radius: 10px;
+    margin: 3px 0;
+}
+
+/* RIGHT */
+.modules-right {
+    background-color: rgba(20, 20, 20, 0.45);
+    border-radius: 10px;
+    margin: 3px 6px 3px 0;
+}
+
+/* Module spacing */
+#cpu,
+#memory,
+#clock,
+#battery,
+#mpris,
+#custom-power,
+#custom-temperature,
+#custom-claude-usage,
+#custom-toolbox,
+#custom-countdown {
+    padding: 0 10px;
+    margin: 0 2px;
+}
+
+/* Power */
+#custom-power {
+    color: #ffffff;
+    font-size: 15px;
+    margin-right: 10px;
+}
+
+/* MPRIS */
+#mpris {
+    min-width: 0;
+}
+
+/* Clock */
+#clock {
+    font-weight: bold;
+}
+
+/* Temperature */
+#custom-temperature.critical {
+    color: #ff5555;
+}
+
+/* Tooltip */
+tooltip {
+    background-color: rgba(20, 20, 20, 0.4);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+}
+
+tooltip label {
+    color: #ffffff;
+    font-size: 14px;
+}
+
+/* Interactive hover effect */
+#cpu,
+#memory,
+#custom-temperature,
+#clock,
+#battery,
+#mpris,
+#custom-power,
+#custom-claude-usage,
+#custom-toolbox,
+#custom-countdown {
+    transition: font-size 0.15s ease;
+}
+
+#cpu:hover,
+#memory:hover,
+#custom-temperature:hover,
+#clock:hover,
+#battery:hover,
+#mpris:hover,
+#custom-power:hover,
+#custom-claude-usage:hover,
+#custom-toolbox:hover,
+#custom-countdown:hover {
+    font-size: 14px;
+}
+
+/* Battery warnings only while discharging. */
+#battery.warning.discharging {
+    color: #f4c26b;
+}
+
+#battery.critical.discharging {
+    color: #ff6b6b;
+}
+
+/* Claude usage */
+#custom-claude-usage.warning {
+    color: #f4c26b;
+}
+
+#custom-claude-usage.critical {
+    color: #ff6b6b;
+}
+
+#custom-claude-usage.stale {
+    opacity: 0.5;
+}
+
+
+/* Toolbox */
+#custom-toolbox {
+    font-size: 13px;
+}
+
+#custom-toolbox:hover {
+    font-size: 15px;
+}
+
+/* Countdown */
+#custom-countdown.running {
+    color: #7aa2f7;
+}
+
+#custom-countdown.paused {
+    opacity: 0.6;
+}

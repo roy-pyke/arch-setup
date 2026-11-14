@@ -1,0 +1,25 @@
+window,
+.background,
+headerbar,
+.sidebar,
+.view,
+.titlebar,
+notebook,
+menu,
+.menu,
+popover,
+.toolbar,
+textview,
+textview text,
+treeview,
+treeview.view,
+treeview.view text {
+    background-color: #000000;
+    background-image: none;
+}
+
+* {
+    color: #ffffff;
+}
+/* colors.css is a light palette exported by KDE; importing it here overrides
+   Breeze-Dark and puts the white text above on light toolbars and entries. */

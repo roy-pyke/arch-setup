@@ -1,0 +1,95 @@
+{
+    "layer": "top",
+    "position": "top",
+    "exclusive": true,
+    "height": 30,
+    "spacing": 4,
+
+    "modules-left": ["cpu", "memory", "custom/temperature", "custom/claude-usage"],
+    "modules-center": ["clock", "custom/countdown"],
+    "modules-right": ["custom/toolbox", "mpris", "battery", "custom/power"],
+
+    "cpu": {
+        "format": "CPU {usage}%",
+        "interval": 2
+    },
+
+    "memory": {
+        "format": "RAM {percentage}%",
+        "tooltip-format": "{used} / {total}GiB",
+        "interval": 2
+    },
+
+    
+    "custom/temperature": {
+        "exec": "$HOME/.config/waybar/scripts/cpu-temp.sh",
+        "return-type": "json",
+        "format": "{}",
+        "interval": 2,
+        "hide-empty-text": true
+    },
+
+    "custom/claude-usage": {
+        "exec": "$HOME/.config/waybar/scripts/claude-usage.sh",
+        "hide-empty-text": true,
+        "return-type": "json",
+        "format": "{}",
+        "interval": 120,
+        "signal": 8,
+        "tooltip": true,
+        "on-click": "xdg-open https://claude.ai/settings/usage"
+    },
+
+    "custom/toolbox": {
+        "format": "󰦬",
+        "tooltip-format": "Toolbox (Super + X)",
+        "on-click": "$HOME/.config/toolbox/toolbox.sh"
+    },
+
+    "custom/countdown": {
+        "exec": "$HOME/.config/toolbox/tools/10-countdown.sh status",
+        "return-type": "json",
+        "format": "{}",
+        "interval": 1,
+        "signal": 10,
+        "hide-empty-text": true,
+        "tooltip": true,
+        "on-click": "$HOME/.config/toolbox/tools/10-countdown.sh manage"
+    },
+
+    "clock": {
+        "format": "{:%a %d %b  %H:%M}",
+        "tooltip-format": "<tt>{calendar}</tt>"
+    },
+
+    "mpris": {
+        "format": "{title} - {artist}",
+        "format-paused": "{title} - {artist}",
+        "max-length": 50,
+        "tooltip": false,
+        "interval": 2
+    },
+
+    "battery": {
+        "interval": 20,
+        "states": {
+            "warning": 20,
+            "critical": 10
+        },
+        "format": "{icon} {capacity}%",
+        "format-charging": "󰂄 {capacity}%",
+        "format-icons": ["󰂎", "󰁺", "󰁼", "󰁾", "󰂀", "󰁹"],
+        "tooltip-format": "Battery: {capacity}%",
+        "tooltip-format-charging": "Charging: {capacity}%",
+        "events": {
+            "on-discharging-warning": "notify-send -u normal 'Battery low' 'Battery is at 20% or less. Plug in soon.'",
+            "on-discharging-critical": "notify-send -u critical 'Battery critically low' 'Battery is at 10% or less. Plug in now.'"
+        }
+    },
+
+    "custom/power": {
+        "format": "⏻",
+        "tooltip": false,
+        "on-click": "$HOME/.config/hypr/scripts/power-menu.sh"
+    }
+}

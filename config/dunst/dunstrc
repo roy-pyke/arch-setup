@@ -1,0 +1,48 @@
+[global]
+    # Match the dark, translucent windows and silver-blue focus border.
+    width = 360
+    height = (0, 300)
+    origin = top-right
+    offset = (12, 12)
+    gap_size = 8
+    padding = 12
+    horizontal_padding = 14
+    text_icon_padding = 10
+    frame_width = 3
+    frame_color = "#d5e4f1eb"
+    corner_radius = 8
+
+    font = JetBrainsMono Nerd Font 11
+    markup = full
+    format = "<b>%s</b>\n%b"
+    enable_recursive_icon_lookup = true
+    icon_theme = "breeze-dark, Adwaita"
+    icon_position = left
+    max_icon_size = 48
+    progress_bar_height = 8
+    progress_bar_corner_radius = 4
+    mouse_middle_click = do_action, close_current
+
+[urgency_low]
+    background = "#000000b3"
+    foreground = "#e6eaf2"
+    highlight = "#93b5ce"
+    timeout = 10
+    default_icon = dialog-information
+
+[urgency_normal]
+    background = "#000000b3"
+    foreground = "#e6eaf2"
+    highlight = "#93b5ce"
+    timeout = 10
+    override_pause_level = 30
+    default_icon = dialog-information
+
+[urgency_critical]
+    background = "#000000b3"
+    foreground = "#ffffff"
+    frame_color = "#ff6b6b"
+    highlight = "#ff6b6b"
+    timeout = 0
+    override_pause_level = 60
+    default_icon = dialog-warning

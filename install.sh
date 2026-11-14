@@ -1,187 +1,220 @@
-```bash
 #!/usr/bin/env bash
+# arch-setup installer (Arch Linux + Hyprland)
+#
+# Usage: ./install.sh [options]
+#
+#   --copy               copy the configs instead of symlinking them to this repo
+#   --skip-packages      do not install packages
+#   --with-optional      also install packages/optional.txt (Chinese input, Firefox)
+#   --with-claude-usage  download the Claude Code usage module for Waybar
+#   -h, --help           show this help
+#
+# What it does:
+#   1. installs packages/core.txt with pacman (--needed, safe to re-run)
+#   2. moves every ~/.config/<dir> that this repo provides to
+#      ~/.config-backups/arch-setup-<time>/ (uninstall.sh restores it)
+#   3. links (or copies) config/<dir> to ~/.config/<dir>, and the systemd user
+#      units into ~/.config/systemd/user/
+#   4. creates the machine-specific files hypr/local.lua and toolbox/local.conf
+#      from their examples (kept across re-installs, never tracked by git)
+#   5. copies the wallpapers to ~/Pictures/Wallpapers
+#   6. enables PipeWire, Bluetooth, NetworkManager and the light/dark timer
+#
+# It never touches /etc; see system/ for lid sleep and hibernation.
 
 set -euo pipefail
 
-# 43PR/dotfiles installer
-# Arch Linux + Hyprland
-#
-# Usage:
-#   ./install.sh
-#
-# This script:
-#   1. Verifies that the system is Arch Linux
-#   2. Updates package databases
-#   3. Installs required packages
-#   4. Backs up existing ~/.config
-#   5. Installs this repository's configuration
-#
-# Designed to be safe to run more than once.
-
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_DIR="$HOME/.config"
-BACKUP_ROOT="$HOME/.config-backups"
-TIMESTAMP="$(date '+%Y-%m-%d_%H-%M-%S')"
-BACKUP_DIR="$BACKUP_ROOT/$TIMESTAMP"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/arch-setup"
+BACKUP_DIR="$HOME/.config-backups/arch-setup-$(date '+%Y%m%d-%H%M%S')"
 
-# --------------------------------------------------
-# Colors / output
-# --------------------------------------------------
+MODE=link
+PACKAGES=1
+OPTIONAL=0
+CLAUDE_USAGE=0
 
-info() {
-    printf '\n\033[1;34m[INFO]\033[0m %s\n' "$1"
-}
+for arg in "$@"; do
+    case "$arg" in
+        --copy)              MODE=copy ;;
+        --skip-packages)     PACKAGES=0 ;;
+        --with-optional)     OPTIONAL=1 ;;
+        --with-claude-usage) CLAUDE_USAGE=1 ;;
+        -h|--help)           sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        *) printf 'unknown option: %s (see --help)\n' "$arg" >&2; exit 2 ;;
+    esac
+done
 
-success() {
-    printf '\n\033[1;32m[DONE]\033[0m %s\n' "$1"
-}
-
-warning() {
-    printf '\n\033[1;33m[WARN]\033[0m %s\n' "$1"
-}
-
-error() {
-    printf '\n\033[1;31m[ERROR]\033[0m %s\n' "$1" >&2
-}
+info()    { printf '\n\033[1;34m==>\033[0m \033[1m%s\033[0m\n' "$1"; }
+ok()      { printf '  \033[1;32m✓\033[0m %s\n' "$1"; }
+warn()    { printf '  \033[1;33m!\033[0m %s\n' "$1"; }
+die()     { printf '\033[1;31merror:\033[0m %s\n' "$1" >&2; exit 1; }
 
 # --------------------------------------------------
 # Checks
 # --------------------------------------------------
 
-if [[ "${EUID}" -eq 0 ]]; then
-    error "Do not run this script as root."
-    exit 1
-fi
-
-if [[ ! -f /etc/arch-release ]]; then
-    error "This installer is intended for Arch Linux."
-    exit 1
-fi
-
-if ! command -v sudo >/dev/null 2>&1; then
-    error "sudo is required."
-    exit 1
-fi
+(( EUID != 0 )) || die "do not run as root; the script calls sudo when it needs to."
+[[ -f /etc/arch-release ]] || die "this installer is for Arch Linux."
 
 # --------------------------------------------------
 # Packages
 # --------------------------------------------------
 
-PACKAGE_FILE="$REPO_DIR/packages.txt"
-
-if [[ ! -f "$PACKAGE_FILE" ]]; then
-    error "packages.txt not found."
-    exit 1
+if (( PACKAGES )); then
+    command -v sudo >/dev/null || die "sudo is required to install packages (or use --skip-packages)."
+    lists=("$REPO_DIR/packages/core.txt")
+    (( OPTIONAL )) && lists+=("$REPO_DIR/packages/optional.txt")
+    mapfile -t pkgs < <(grep -hvE '^\s*(#|$)' "${lists[@]}")
+    info "Installing ${#pkgs[@]} packages"
+    sudo pacman -S --needed --noconfirm "${pkgs[@]}"
+    ok "packages installed"
 fi
 
-mapfile -t PACKAGES < <(
-    grep -vE '^\s*(#|$)' "$PACKAGE_FILE"
-)
-
-info "Installing required packages..."
-
-sudo pacman -S --needed --noconfirm "${PACKAGES[@]}"
-
 # --------------------------------------------------
-# Backup existing configuration
+# Configs
 # --------------------------------------------------
 
-if [[ -d "$CONFIG_DIR" ]]; then
-    info "Backing up existing ~/.config..."
+backup() {
+    # backup <path relative to CONFIG_DIR>: move it into BACKUP_DIR.
+    mkdir -p "$(dirname "$BACKUP_DIR/$1")"
+    mv "$CONFIG_DIR/$1" "$BACKUP_DIR/$1"
+}
 
-    mkdir -p "$BACKUP_DIR"
+points_here() {
+    [[ -L "$1" && "$(readlink -f "$1")" == "$(readlink -f "$2")" ]]
+}
 
-    # Only back up directories/files that this repository
-    # is going to replace.
-    for item in "$REPO_DIR/.config/"*; do
-        [[ -e "$item" ]] || continue
+info "Installing configs ($MODE mode) into $CONFIG_DIR"
+mkdir -p "$CONFIG_DIR"
 
-        name="$(basename "$item")"
+for src in "$REPO_DIR/config/"*/; do
+    src=${src%/}
+    name=$(basename "$src")
+    [[ "$name" == systemd ]] && continue
+    target="$CONFIG_DIR/$name"
 
-        if [[ -e "$CONFIG_DIR/$name" ]]; then
-            cp -a "$CONFIG_DIR/$name" "$BACKUP_DIR/"
+    if points_here "$target" "$src"; then
+        ok "$name (already linked)"
+        continue
+    fi
+    if [[ -e "$target" || -L "$target" ]]; then
+        backup "$name"
+    fi
+    if [[ "$MODE" == link ]]; then
+        ln -s "$src" "$target"
+    else
+        cp -a "$src" "$target"
+    fi
+    ok "$name"
+done
+
+# systemd user units are linked or copied one by one, so units from other
+# software in ~/.config/systemd/user stay where they are.
+mkdir -p "$CONFIG_DIR/systemd/user"
+for src in "$REPO_DIR/config/systemd/user/"*; do
+    [[ -f "$src" ]] || continue
+    rel="systemd/user/$(basename "$src")"
+    target="$CONFIG_DIR/$rel"
+    if points_here "$target" "$src" || { [[ "$MODE" == copy ]] && cmp -s "$src" "$target"; }; then
+        continue
+    fi
+    [[ -e "$target" || -L "$target" ]] && backup "$rel"
+    if [[ "$MODE" == link ]]; then ln -s "$src" "$target"; else cp -a "$src" "$target"; fi
+done
+ok "systemd user units"
+
+# Machine-specific files: keep the ones from the backup, otherwise start from the examples.
+for pair in "hypr/local.lua:hypr/local.example.lua" "toolbox/local.conf:toolbox/local.example.conf"; do
+    file=${pair%%:*}
+    example=${pair#*:}
+    if [[ ! -e "$CONFIG_DIR/$file" ]]; then
+        if [[ -e "$BACKUP_DIR/$file" ]]; then
+            cp -a "$BACKUP_DIR/$file" "$CONFIG_DIR/$file"
+            ok "$file (kept from your previous config)"
+        else
+            cp "$CONFIG_DIR/$example" "$CONFIG_DIR/$file"
+            ok "$file (created from $(basename "$example"); edit it for this machine)"
         fi
-    done
+    fi
+done
 
-    success "Existing configuration backed up to:"
-    printf '  %s\n' "$BACKUP_DIR"
-else
-    mkdir -p "$CONFIG_DIR"
+find "$REPO_DIR/config" -type f -name '*.sh' -exec chmod +x {} +
+
+if [[ -d "$BACKUP_DIR" ]]; then
+    mkdir -p "$STATE_DIR"
+    printf '%s\n' "$BACKUP_DIR" >> "$STATE_DIR/backups"
+    ok "previous configs moved to $BACKUP_DIR"
 fi
-
-# --------------------------------------------------
-# Install dotfiles
-# --------------------------------------------------
-
-info "Installing dotfiles..."
-
-cp -a "$REPO_DIR/.config/." "$CONFIG_DIR/"
-
-success "Dotfiles installed."
+mkdir -p "$STATE_DIR"
+printf '%s\n' "$MODE" > "$STATE_DIR/mode"
 
 # --------------------------------------------------
 # Wallpapers
 # --------------------------------------------------
 
-if [[ -d "$REPO_DIR/Wallpapers" ]]; then
-    info "Installing wallpapers..."
+info "Wallpapers"
+mkdir -p "$HOME/Pictures/Wallpapers"
+cp -n "$REPO_DIR/wallpapers/"* "$HOME/Pictures/Wallpapers/" 2>/dev/null || true
+ok "~/Pictures/Wallpapers"
 
-    mkdir -p "$HOME/Pictures/Wallpapers"
-    cp -a "$REPO_DIR/Wallpapers/." "$HOME/Pictures/Wallpapers/"
+# --------------------------------------------------
+# Services
+# --------------------------------------------------
 
-    success "Wallpapers installed."
+info "Services"
+systemctl --user daemon-reload
+if systemctl --user enable --now pipewire.service pipewire-pulse.service wireplumber.service >/dev/null 2>&1; then
+    ok "PipeWire"
+else
+    warn "could not enable PipeWire; run this again from a graphical session"
+fi
+if systemctl --user enable auto-color-scheme.timer >/dev/null 2>&1; then
+    ok "auto-color-scheme.timer"
+else
+    warn "could not enable auto-color-scheme.timer"
+fi
+if (( PACKAGES )); then
+    if sudo systemctl enable --now bluetooth.service NetworkManager.service >/dev/null 2>&1; then
+        ok "Bluetooth and NetworkManager"
+    else
+        warn "could not enable bluetooth.service / NetworkManager.service"
+    fi
+else
+    warn "skipped system services; enable them with: sudo systemctl enable --now bluetooth NetworkManager"
 fi
 
 # --------------------------------------------------
-# Enable user audio services
+# Optional: Claude Code usage module
 # --------------------------------------------------
 
-info "Enabling PipeWire..."
-
-systemctl --user enable --now pipewire.service
-systemctl --user enable --now pipewire-pulse.service
-systemctl --user enable --now wireplumber.service
-
-success "PipeWire configured."
-
-# --------------------------------------------------
-# Permissions
-# --------------------------------------------------
-
-info "Setting executable permissions on scripts..."
-
-if [[ -d "$CONFIG_DIR/hypr/scripts" ]]; then
-    find "$CONFIG_DIR/hypr/scripts" \
-        -type f \
-        -exec chmod +x {} \;
+if (( CLAUDE_USAGE )); then
+    info "Claude Code usage module"
+    dest="${XDG_DATA_HOME:-$HOME/.local/share}/claude-usage-waybar"
+    if [[ -d "$dest" ]]; then
+        ok "already installed in $dest"
+    elif git clone --depth 1 https://github.com/Janicklin/claude-usage-waybar.git "$dest" >/dev/null 2>&1; then
+        ok "installed in $dest"
+    else
+        warn "download failed; the module stays hidden"
+    fi
 fi
 
-success "Permissions configured."
-
 # --------------------------------------------------
-# Finish
+# Reload a running session
 # --------------------------------------------------
 
-printf '\n'
-printf '\033[1;32m========================================\033[0m\n'
-printf '\033[1;32m       43PR Hyprland Setup Ready       \033[0m\n'
-printf '\033[1;32m========================================\033[0m\n'
-printf '\n'
-
-printf 'Configuration: %s\n' "$CONFIG_DIR"
-
-if [[ -d "$BACKUP_DIR" ]]; then
-    printf 'Backup:        %s\n' "$BACKUP_DIR"
+if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+    hyprctl reload >/dev/null 2>&1 || true
+    pkill -SIGUSR2 -x waybar 2>/dev/null || true
 fi
 
-printf '\n'
-warning "Log out and back into Hyprland for the changes to fully take effect."
-
-printf '\n'
-info "You can start Hyprland with:"
-printf '  Hyprland\n'
-
-printf '\n'
-success "Installation complete!"
-```
-
+info "Done"
+cat <<EOF
+  Next steps:
+  - Edit ~/.config/hypr/local.lua for this machine (monitors, keyboard layout, devices).
+  - Optional: set your headphones in ~/.config/toolbox/local.conf.
+  - Optional: lid sleep and hibernation, see system/ and the README.
+  - Log in to the Hyprland session (or it was just reloaded if already running).
+  Undo everything with ./uninstall.sh
+EOF

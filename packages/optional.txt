@@ -1,0 +1,11 @@
+# Optional packages. Install with: ./install.sh --with-optional
+
+# Chinese (Pinyin) input method; Ctrl+Space switches input methods.
+fcitx5
+fcitx5-chinese-addons
+fcitx5-gtk
+fcitx5-qt
+fcitx5-configtool
+
+# Browser used by Super+B when Google Chrome is not installed.
+firefox

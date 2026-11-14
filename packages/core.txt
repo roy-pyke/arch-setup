@@ -1,0 +1,57 @@
+# Packages required by the desktop. install.sh installs these with pacman.
+
+# Hyprland and the session
+hyprland
+hypridle
+hyprlock
+xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
+xorg-xwayland
+polkit-kde-agent
+glib2
+
+# Bar, menus, notifications, shell widgets
+waybar
+rofi
+dunst
+libnotify
+quickshell
+jq
+
+# Wallpaper, screenshots, clipboard
+awww
+imagemagick
+grim
+slurp
+cliphist
+wl-clipboard
+
+# Audio and media
+pipewire
+pipewire-pulse
+pipewire-alsa
+wireplumber
+pavucontrol
+playerctl
+
+# Bluetooth and network
+bluez
+bluez-utils
+networkmanager
+network-manager-applet
+
+# Terminal, file manager, monitor
+kitty
+thunar
+btop
+python
+git
+
+# Theme and fonts
+breeze
+breeze-gtk
+breeze-icons
+ttf-jetbrains-mono-nerd
+noto-fonts
+noto-fonts-cjk
+woff2-font-awesome

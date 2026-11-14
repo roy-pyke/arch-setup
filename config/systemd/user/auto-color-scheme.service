@@ -1,0 +1,6 @@
+[Unit]
+Description=Update the application light or dark preference
+
+[Service]
+Type=oneshot
+ExecStart=%h/.config/hypr/scripts/auto-color-scheme.sh

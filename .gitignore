@@ -1,0 +1,18 @@
+# Machine-specific settings (created by install.sh from the *.example files)
+config/hypr/local.lua
+config/toolbox/local.conf
+
+# Files that applications write into their config directories
+config/gtk-3.0/bookmarks
+config/fcitx5/conf/cached_layouts
+config/systemd/user/*.wants/
+.qmlls.ini
+
+# Backups
+*.bak
+*.bak.*
+*.bak-*
+*.backup
+*.backup-*
+*.orig
+__pycache__/
